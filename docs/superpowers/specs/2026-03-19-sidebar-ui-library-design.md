@@ -25,7 +25,7 @@ Core sidebar features only: navigation items, nesting, groups, collapse, resize,
 - **Framework:** React 18+ (peer dependency)
 - **Build:** tsup (ESM + CJS + declarations), Tailwind CLI (CSS compilation)
 - **Testing:** Vitest + React Testing Library
-- **Styling:** Tailwind (internal build only) → pre-compiled CSS with CSS variables
+- **Styling:** Tailwind `@apply` in BEM-class definitions → pre-compiled CSS with CSS variables
 
 ---
 
@@ -72,18 +72,19 @@ sidebar-ui/
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "sideEffects": ["./dist/styles.css"],
   "exports": {
     ".": {
+      "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "require": "./dist/index.cjs",
-      "types": "./dist/index.d.ts"
+      "require": "./dist/index.cjs"
     },
     "./styles.css": "./dist/styles.css"
   },
   "files": ["dist"],
   "scripts": {
     "build:css": "tailwindcss -i src/styles/sidebar.css -o dist/styles.css --minify",
-    "build:js": "tsup src/index.ts --format esm,cjs --dts",
+    "build:js": "tsup src/index.ts --format esm,cjs --dts --clean --external react --external react-dom",
     "build": "npm run build:css && npm run build:js",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -119,7 +120,7 @@ The root `<Sidebar>` manages internal state (collapsed, resizing, mobile overlay
 
 | Component | Purpose | Key Props |
 |---|---|---|
-| `Sidebar` | Root container, provides context | `defaultCollapsed`, `collapsed`, `collapsible`, `resizable`, `minWidth`, `maxWidth`, `defaultWidth`, `width`, `overlay`, `onCollapsedChange`, `onWidthChange`, `className`, `style` |
+| `Sidebar` | Root container, provides context | `defaultCollapsed`, `collapsed`, `collapsible`, `resizable`, `minWidth`, `maxWidth`, `defaultWidth`, `width`, `overlay`, `onCollapsedChange`, `onWidthChange`, `onOverlayClose`, `aria-label`, `className`, `style` |
 | `Sidebar.Header` | Top section (logo, app name) | `children`, `className` |
 | `Sidebar.Footer` | Bottom section (user info, version) | `children`, `className` |
 | `Sidebar.Group` | Labeled section grouping items | `label`, `collapsible`, `defaultCollapsed`, `children`, `className` |
@@ -130,10 +131,11 @@ The root `<Sidebar>` manages internal state (collapsed, resizing, mobile overlay
 
 ### Behavior details
 
-- **Collapsed mode:** Sidebar shrinks to icon-only width (~64px). `Sidebar.Item` shows tooltip with label on hover. `Sidebar.Header`, `Sidebar.Footer`, `Sidebar.Search` hide their text content. `Sidebar.Group` labels hide.
+- **Collapsed mode:** Sidebar shrinks to icon-only width (~64px). `Sidebar.Item` renders a hidden `<span role="tooltip">` sibling positioned absolutely, shown on hover via CSS. This is a real DOM element so it can carry `role="tooltip"` and be linked via `aria-describedby`. `Sidebar.Header`, `Sidebar.Footer`, `Sidebar.Search` hide their text content. `Sidebar.Group` labels hide.
 - **Resizable:** User drags the right edge. Constrained by `minWidth`/`maxWidth`. Fires `onWidthChange`.
 - **Nested items:** `Sidebar.Item` containing child `Sidebar.Item` elements renders as an expandable/collapsible sub-menu with indent.
-- **Mobile overlay:** When `overlay` is true, sidebar renders as a fixed overlay with backdrop. Useful for responsive layouts where the consumer toggles `overlay` based on viewport.
+- **Mobile overlay:** When `overlay` is true, sidebar renders as a fixed overlay with backdrop. Clicking the backdrop or pressing Escape fires `onOverlayClose` so the consumer can set `overlay` to false. Useful for responsive layouts where the consumer toggles `overlay` based on viewport.
+- **Search:** `Sidebar.Search` manages its own input value internally and fires `onSearch` on each keystroke. The sidebar does **not** filter items internally. Consumers are responsible for filtering their item list based on the search value. This keeps the component composable and avoids coupling to a specific data shape.
 - **Active state:** Consumer controls via `active` prop on `Sidebar.Item`. No built-in router integration.
 
 ### Full usage example
@@ -184,6 +186,18 @@ function AppLayout({ children }) {
 ---
 
 ## Section 3 — Styling & Theming
+
+### Tailwind-to-BEM compilation strategy
+
+The source CSS file (`src/styles/sidebar.css`) defines BEM-class selectors and uses Tailwind `@apply` directives inside them as a convenience macro layer. For example:
+
+```css
+.sidebar-item--active {
+  @apply bg-blue-50 text-blue-600;
+}
+```
+
+The Tailwind CLI compiles these `@apply` usages into plain CSS in the output. `tailwind.config.ts` must set `content: ['./src/**/*.{ts,tsx,css}']` so that any Tailwind utilities referenced in the source CSS are included in the build. The output `dist/styles.css` contains only plain CSS — no Tailwind runtime or utilities.
 
 ### CSS Variables
 
@@ -286,6 +300,7 @@ interface SidebarContextValue {
   minWidth: number;
   maxWidth: number;
   overlay: boolean;
+  onOverlayClose?: () => void;
 }
 ```
 
@@ -310,12 +325,18 @@ interface SidebarContextValue {
 
 ### Resize implementation
 
-1. `onMouseDown` on `.sidebar-resize-handle` starts tracking
-2. `mousemove` on `document` updates width, clamped to `[minWidth, maxWidth]`
-3. `mouseup` on `document` stops tracking
+Uses Pointer Events (`pointerdown`/`pointermove`/`pointerup`) for unified mouse and touch support:
+
+1. `onPointerDown` on `.sidebar-resize-handle` starts tracking (calls `setPointerCapture`)
+2. `onPointerMove` on the handle (captured) updates width, clamped to `[minWidth, maxWidth]`
+3. `onPointerUp` stops tracking (calls `releasePointerCapture`)
 4. Fires `onWidthChange` on each change
 
 All listeners attached/removed via `useEffect` cleanup. No external dependency.
+
+### SSR compatibility
+
+The library is SSR-safe. No `window` or `document` access at module level. All browser API usage (pointer event listeners, `document.activeElement` for focus management) is guarded inside event handlers or `useEffect` callbacks, which only run in the browser.
 
 ---
 
@@ -325,13 +346,13 @@ All listeners attached/removed via `useEffect` cleanup. No external dependency.
 
 | Component | Element | ARIA |
 |---|---|---|
-| `Sidebar` | `<nav>` | `role="navigation"`, `aria-label="Sidebar"` |
+| `Sidebar` | `<nav>` | `role="navigation"`, `aria-label` prop (defaults to `"Sidebar"`) |
 | `SidebarGroup` | `<div>` with `<ul>` | `role="list"`, group label via `aria-labelledby` |
 | `SidebarItem` | `<li>` wrapping `<a>` or `<button>` | `aria-current="page"` when active, `aria-disabled` when disabled |
 | `SidebarItem` (parent) | expandable | `aria-expanded`, `aria-controls` pointing to sub-list ID |
 | `SidebarToggle` | `<button>` | `aria-label="Collapse sidebar"` / `"Expand sidebar"`, `aria-expanded` |
 | `SidebarSearch` | `<input>` | `role="searchbox"`, `aria-label="Search sidebar"` |
-| Collapsed tooltip | tooltip element | `role="tooltip"`, linked via `aria-describedby` |
+| Collapsed tooltip | `<span>` sibling | `role="tooltip"`, linked to parent item via `aria-describedby` |
 | Overlay backdrop | `<div>` | `aria-hidden="true"` |
 
 ### Keyboard navigation
@@ -344,7 +365,7 @@ All listeners attached/removed via `useEffect` cleanup. No external dependency.
 
 - When overlay opens, focus moves to the first focusable item inside the sidebar
 - When overlay closes, focus returns to the element that triggered it
-- Focus trap inside overlay mode (tab cycles within sidebar until closed)
+- Focus trap inside overlay mode (tab cycles within sidebar until closed). Implemented manually with sentinel `<div>` elements at the start and end of the sidebar that redirect focus back into the container on Tab. No external dependency.
 
 ---
 
@@ -368,7 +389,7 @@ All listeners attached/removed via `useEffect` cleanup. No external dependency.
 **Build pipeline:**
 ```
 build:css    → tailwindcss -i src/styles/sidebar.css -o dist/styles.css --minify
-build:js     → tsup src/index.ts --format esm,cjs --dts
+build:js     → tsup src/index.ts --format esm,cjs --dts --clean --external react --external react-dom
 build        → build:css && build:js
 prepublishOnly → npm run build && npm test
 ```
