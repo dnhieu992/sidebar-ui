@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useRef } from 'react';
 import { SidebarProvider } from '../context/SidebarContext';
 import { SidebarHeader } from './SidebarHeader';
 import { SidebarFooter } from './SidebarFooter';
@@ -8,6 +8,39 @@ import { SidebarSearch } from './SidebarSearch';
 import { SidebarToggle } from './SidebarToggle';
 import { SidebarDivider } from './SidebarDivider';
 import type { SidebarProps } from '../types';
+
+function ResizeHandle({ onResize }: { onResize: (deltaX: number) => void }) {
+  const startXRef = useRef(0);
+  const isDragging = useRef(false);
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    startXRef.current = e.clientX ?? 0;
+    isDragging.current = true;
+    (e.target as HTMLElement).setPointerCapture(e.pointerId);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isDragging.current) return;
+    const clientX = e.clientX ?? 0;
+    const delta = clientX - startXRef.current;
+    startXRef.current = clientX;
+    onResize(delta);
+  };
+
+  const handlePointerUp = (e: React.PointerEvent) => {
+    isDragging.current = false;
+    (e.target as HTMLElement).releasePointerCapture(e.pointerId);
+  };
+
+  return (
+    <div
+      className="sidebar-resize-handle"
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+    />
+  );
+}
 
 function SidebarRoot({
   children,
@@ -94,7 +127,7 @@ function SidebarRoot({
       >
         {children}
         {resizable && !collapsed && (
-          <div className="sidebar-resize-handle" />
+          <ResizeHandle onResize={(delta) => setWidth(width + delta)} />
         )}
       </nav>
     </SidebarProvider>
