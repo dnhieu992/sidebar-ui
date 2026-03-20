@@ -72,3 +72,61 @@ describe('SidebarItem', () => {
     expect(container.querySelector('.sidebar-item--active')).toBeInTheDocument();
   });
 });
+
+describe('SidebarItem nesting', () => {
+  it('renders nested items when expanded', () => {
+    render(
+      <SidebarProvider {...defaultCtx}>
+        <SidebarItem icon={<span>I</span>}>
+          Tasks
+          <SidebarItem>Active</SidebarItem>
+          <SidebarItem>Completed</SidebarItem>
+        </SidebarItem>
+      </SidebarProvider>
+    );
+    // Initially collapsed — nested items not visible
+    expect(screen.queryByText('Active')).not.toBeInTheDocument();
+
+    // Click to expand
+    fireEvent.click(screen.getByRole('button', { name: /Tasks/i }));
+    expect(screen.getByText('Active')).toBeInTheDocument();
+    expect(screen.getByText('Completed')).toBeInTheDocument();
+  });
+
+  it('sets aria-expanded on parent item', () => {
+    render(
+      <SidebarProvider {...defaultCtx}>
+        <SidebarItem>
+          Tasks
+          <SidebarItem>Active</SidebarItem>
+        </SidebarItem>
+      </SidebarProvider>
+    );
+    const btn = screen.getByRole('button');
+    expect(btn).toHaveAttribute('aria-expanded', 'false');
+    fireEvent.click(btn);
+    expect(btn).toHaveAttribute('aria-expanded', 'true');
+  });
+});
+
+describe('SidebarItem collapsed tooltip', () => {
+  it('renders tooltip span when sidebar is collapsed', () => {
+    const { container } = render(
+      <SidebarProvider {...{ ...defaultCtx, collapsed: true }}>
+        <SidebarItem>Dashboard</SidebarItem>
+      </SidebarProvider>
+    );
+    const tooltip = container.querySelector('[role="tooltip"]');
+    expect(tooltip).toBeInTheDocument();
+    expect(tooltip).toHaveTextContent('Dashboard');
+  });
+
+  it('does not render tooltip when sidebar is expanded', () => {
+    const { container } = render(
+      <SidebarProvider {...defaultCtx}>
+        <SidebarItem>Dashboard</SidebarItem>
+      </SidebarProvider>
+    );
+    expect(container.querySelector('[role="tooltip"]')).not.toBeInTheDocument();
+  });
+});
