@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { SidebarProvider } from '../context/SidebarContext';
 import { SidebarHeader } from './SidebarHeader';
 import { SidebarFooter } from './SidebarFooter';
@@ -40,6 +40,25 @@ function ResizeHandle({ onResize }: { onResize: (deltaX: number) => void }) {
       onPointerUp={handlePointerUp}
     />
   );
+}
+
+function getFocusableElements(container: HTMLElement | null): HTMLElement[] {
+  if (!container) return [];
+  return Array.from(
+    container.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"]):not([aria-hidden="true"])'
+    )
+  );
+}
+
+function focusFirstElement(container: HTMLElement | null) {
+  const elements = getFocusableElements(container);
+  elements[0]?.focus();
+}
+
+function focusLastElement(container: HTMLElement | null) {
+  const elements = getFocusableElements(container);
+  elements[elements.length - 1]?.focus();
 }
 
 function SidebarRoot({
@@ -86,6 +105,32 @@ function SidebarRoot({
     [isControlledWidth, minWidth, maxWidth, onWidthChange]
   );
 
+  const navRef = useRef<HTMLElement>(null);
+  const previousFocusRef = useRef<HTMLElement | null>(null);
+
+  // Escape key handler
+  useEffect(() => {
+    if (!overlay) return;
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onOverlayClose?.();
+      }
+    };
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [overlay, onOverlayClose]);
+
+  // Focus management: auto-focus on open, restore on close
+  useEffect(() => {
+    if (overlay) {
+      previousFocusRef.current = document.activeElement as HTMLElement;
+      focusFirstElement(navRef.current);
+    } else if (previousFocusRef.current) {
+      previousFocusRef.current.focus();
+      previousFocusRef.current = null;
+    }
+  }, [overlay]);
+
   const classes = [
     'sidebar-root',
     collapsed && 'sidebar-root--collapsed',
@@ -121,14 +166,17 @@ function SidebarRoot({
         />
       )}
       <nav
+        ref={navRef}
         className={classes}
         style={sidebarStyle}
         aria-label={ariaLabel}
       >
+        {overlay && <div tabIndex={0} onFocus={() => focusLastElement(navRef.current)} aria-hidden="true" />}
         {children}
         {resizable && !collapsed && (
           <ResizeHandle onResize={(delta) => setWidth(width + delta)} />
         )}
+        {overlay && <div tabIndex={0} onFocus={() => focusFirstElement(navRef.current)} aria-hidden="true" />}
       </nav>
     </SidebarProvider>
   );
