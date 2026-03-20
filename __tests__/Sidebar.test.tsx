@@ -5,6 +5,8 @@ import { SidebarHeader } from '../src/components/SidebarHeader';
 import { SidebarFooter } from '../src/components/SidebarFooter';
 import { SidebarDivider } from '../src/components/SidebarDivider';
 import { SidebarToggle } from '../src/components/SidebarToggle';
+import { Sidebar } from '../src/components/Sidebar';
+import { useState } from 'react';
 
 function TestConsumer() {
   const ctx = useSidebarContext();
@@ -139,5 +141,67 @@ describe('SidebarToggle', () => {
     );
     fireEvent.click(screen.getByRole('button'));
     expect(setCollapsed).toHaveBeenCalledWith(true);
+  });
+});
+
+describe('Sidebar (root)', () => {
+  it('renders as nav with aria-label', () => {
+    render(<Sidebar>Content</Sidebar>);
+    const nav = screen.getByRole('navigation');
+    expect(nav).toHaveAttribute('aria-label', 'Sidebar');
+  });
+
+  it('supports custom aria-label', () => {
+    render(<Sidebar aria-label="Main navigation">Content</Sidebar>);
+    expect(screen.getByRole('navigation')).toHaveAttribute('aria-label', 'Main navigation');
+  });
+
+  it('renders children', () => {
+    render(<Sidebar>Hello Sidebar</Sidebar>);
+    expect(screen.getByText('Hello Sidebar')).toBeInTheDocument();
+  });
+
+  it('has compound sub-components', () => {
+    expect(Sidebar.Header).toBeDefined();
+    expect(Sidebar.Footer).toBeDefined();
+    expect(Sidebar.Item).toBeDefined();
+    expect(Sidebar.Group).toBeDefined();
+    expect(Sidebar.Search).toBeDefined();
+    expect(Sidebar.Toggle).toBeDefined();
+    expect(Sidebar.Divider).toBeDefined();
+  });
+
+  it('supports uncontrolled collapsed with defaultCollapsed', () => {
+    render(
+      <Sidebar collapsible defaultCollapsed>
+        <Sidebar.Toggle />
+      </Sidebar>
+    );
+    const nav = screen.getByRole('navigation');
+    expect(nav).toHaveClass('sidebar-root--collapsed');
+
+    fireEvent.click(screen.getByRole('button', { name: 'Expand sidebar' }));
+    expect(nav).not.toHaveClass('sidebar-root--collapsed');
+  });
+
+  it('supports controlled collapsed', () => {
+    function Controlled() {
+      const [c, setC] = useState(false);
+      return (
+        <Sidebar collapsible collapsed={c} onCollapsedChange={setC}>
+          <Sidebar.Toggle />
+          <span data-testid="state">{String(c)}</span>
+        </Sidebar>
+      );
+    }
+    render(<Controlled />);
+    expect(screen.getByTestId('state').textContent).toBe('false');
+    fireEvent.click(screen.getByRole('button', { name: 'Collapse sidebar' }));
+    expect(screen.getByTestId('state').textContent).toBe('true');
+  });
+
+  it('applies overlay class', () => {
+    render(<Sidebar overlay>Content</Sidebar>);
+    expect(screen.getByRole('navigation').closest('.sidebar-root')).toHaveClass('sidebar-root--overlay');
   });
 });
