@@ -1,0 +1,301 @@
+@tailwind base;
+@tailwind utilities;
+
+/* ===========================
+   CSS Variables (theming)
+   =========================== */
+
+.sidebar-root {
+  --sidebar-width: 260px;
+  --sidebar-collapsed-width: 64px;
+  --sidebar-min-width: 200px;
+  --sidebar-max-width: 480px;
+
+  --sidebar-bg: #ffffff;
+  --sidebar-border-color: #e5e7eb;
+  --sidebar-text-color: #1f2937;
+  --sidebar-text-muted: #6b7280;
+  --sidebar-item-hover-bg: #f3f4f6;
+  --sidebar-item-active-bg: #eff6ff;
+  --sidebar-item-active-color: #2563eb;
+  --sidebar-badge-bg: #2563eb;
+  --sidebar-badge-color: #ffffff;
+  --sidebar-overlay-backdrop: rgba(0, 0, 0, 0.4);
+
+  --sidebar-font-family: inherit;
+  --sidebar-font-size: 14px;
+  --sidebar-group-label-size: 12px;
+
+  --sidebar-padding: 12px;
+  --sidebar-item-padding: 8px 12px;
+  --sidebar-item-gap: 4px;
+  --sidebar-nest-indent: 24px;
+
+  --sidebar-item-radius: 6px;
+
+  --sidebar-transition-duration: 200ms;
+}
+
+/* ===========================
+   Root
+   =========================== */
+
+.sidebar-root {
+  @apply flex flex-col relative h-full overflow-hidden;
+  background-color: var(--sidebar-bg);
+  color: var(--sidebar-text-color);
+  font-family: var(--sidebar-font-family);
+  font-size: var(--sidebar-font-size);
+  border-right: 1px solid var(--sidebar-border-color);
+  transition: width var(--sidebar-transition-duration) ease;
+  padding: var(--sidebar-padding);
+}
+
+.sidebar-root--collapsed {
+  width: var(--sidebar-collapsed-width) !important;
+}
+
+.sidebar-root--overlay {
+  @apply fixed top-0 left-0 z-50 h-full;
+}
+
+/* ===========================
+   Overlay Backdrop
+   =========================== */
+
+.sidebar-overlay-backdrop {
+  @apply fixed inset-0 z-40;
+  background-color: var(--sidebar-overlay-backdrop);
+}
+
+/* ===========================
+   Header
+   =========================== */
+
+.sidebar-header {
+  @apply flex items-center gap-3 mb-4;
+  padding: var(--sidebar-item-padding);
+}
+
+.sidebar-root--collapsed .sidebar-header {
+  @apply justify-center;
+}
+
+.sidebar-root--collapsed .sidebar-header span,
+.sidebar-root--collapsed .sidebar-header p {
+  @apply hidden;
+}
+
+/* ===========================
+   Footer
+   =========================== */
+
+.sidebar-footer {
+  @apply flex items-center gap-3 mt-auto pt-4;
+  padding: var(--sidebar-item-padding);
+  border-top: 1px solid var(--sidebar-border-color);
+}
+
+/* ===========================
+   Divider
+   =========================== */
+
+.sidebar-divider {
+  @apply border-0 my-2;
+  border-top: 1px solid var(--sidebar-border-color);
+}
+
+/* ===========================
+   Group
+   =========================== */
+
+.sidebar-group {
+  @apply mb-2;
+}
+
+.sidebar-group__label {
+  @apply block uppercase tracking-wider font-semibold mb-1;
+  font-size: var(--sidebar-group-label-size);
+  color: var(--sidebar-text-muted);
+  padding: var(--sidebar-item-padding);
+  background: none;
+  border: none;
+  cursor: default;
+  text-align: left;
+  width: 100%;
+}
+
+button.sidebar-group__label {
+  @apply cursor-pointer;
+}
+
+button.sidebar-group__label:hover {
+  background-color: var(--sidebar-item-hover-bg);
+  border-radius: var(--sidebar-item-radius);
+}
+
+.sidebar-group__label--hidden {
+  @apply invisible h-0 overflow-hidden mb-0 p-0;
+}
+
+.sidebar-group ul {
+  @apply list-none p-0 m-0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sidebar-item-gap);
+}
+
+/* ===========================
+   Item
+   =========================== */
+
+.sidebar-item__wrapper {
+  @apply list-none;
+}
+
+.sidebar-item {
+  @apply flex items-center gap-3 w-full no-underline relative;
+  padding: var(--sidebar-item-padding);
+  border-radius: var(--sidebar-item-radius);
+  color: var(--sidebar-text-color);
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: var(--sidebar-font-size);
+  font-family: var(--sidebar-font-family);
+  text-align: left;
+  transition: background-color var(--sidebar-transition-duration) ease,
+              color var(--sidebar-transition-duration) ease;
+}
+
+.sidebar-item:hover:not(.sidebar-item--disabled) {
+  background-color: var(--sidebar-item-hover-bg);
+}
+
+.sidebar-item--active {
+  background-color: var(--sidebar-item-active-bg);
+  color: var(--sidebar-item-active-color);
+}
+
+.sidebar-item--disabled {
+  @apply opacity-50 cursor-not-allowed;
+}
+
+.sidebar-item__icon {
+  @apply flex-shrink-0 flex items-center justify-center;
+  width: 20px;
+  height: 20px;
+}
+
+.sidebar-item__label {
+  @apply flex-1 truncate;
+}
+
+.sidebar-root--collapsed .sidebar-item__label {
+  @apply hidden;
+}
+
+.sidebar-item__badge {
+  @apply inline-flex items-center justify-center text-xs font-medium rounded-full;
+  background-color: var(--sidebar-badge-bg);
+  color: var(--sidebar-badge-color);
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+}
+
+.sidebar-root--collapsed .sidebar-item__badge {
+  @apply hidden;
+}
+
+/* ===========================
+   Item Tooltip (collapsed mode)
+   =========================== */
+
+.sidebar-item__tooltip {
+  @apply invisible opacity-0 absolute left-full ml-2 px-2 py-1 text-xs rounded whitespace-nowrap z-50 pointer-events-none;
+  background-color: var(--sidebar-text-color);
+  color: var(--sidebar-bg);
+  transition: opacity var(--sidebar-transition-duration) ease;
+}
+
+.sidebar-root--collapsed .sidebar-item:hover .sidebar-item__tooltip {
+  @apply visible opacity-100;
+}
+
+/* Not in collapsed mode — hide tooltip completely */
+.sidebar-root:not(.sidebar-root--collapsed) .sidebar-item__tooltip {
+  @apply hidden;
+}
+
+/* ===========================
+   Nested Items
+   =========================== */
+
+.sidebar-item__children {
+  @apply list-none p-0 m-0;
+  padding-left: var(--sidebar-nest-indent);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sidebar-item-gap);
+}
+
+/* ===========================
+   Search
+   =========================== */
+
+.sidebar-search {
+  @apply mb-3;
+  padding: 0 var(--sidebar-padding);
+}
+
+.sidebar-search__input {
+  @apply w-full rounded border outline-none;
+  padding: var(--sidebar-item-padding);
+  border-color: var(--sidebar-border-color);
+  font-size: var(--sidebar-font-size);
+  font-family: var(--sidebar-font-family);
+  background-color: var(--sidebar-bg);
+  color: var(--sidebar-text-color);
+}
+
+.sidebar-search__input:focus {
+  border-color: var(--sidebar-item-active-color);
+  box-shadow: 0 0 0 1px var(--sidebar-item-active-color);
+}
+
+.sidebar-root--collapsed .sidebar-search {
+  @apply hidden;
+}
+
+/* ===========================
+   Toggle
+   =========================== */
+
+.sidebar-toggle {
+  @apply flex items-center justify-center rounded;
+  padding: 6px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--sidebar-text-muted);
+  transition: background-color var(--sidebar-transition-duration) ease;
+}
+
+.sidebar-toggle:hover {
+  background-color: var(--sidebar-item-hover-bg);
+}
+
+/* ===========================
+   Resize Handle
+   =========================== */
+
+.sidebar-resize-handle {
+  @apply absolute top-0 right-0 w-1 h-full cursor-col-resize;
+  background-color: transparent;
+  transition: background-color var(--sidebar-transition-duration) ease;
+}
+
+.sidebar-resize-handle:hover {
+  background-color: var(--sidebar-item-active-color);
+}
